@@ -13,10 +13,9 @@ export default function Home() {
   const [aiAnswer, setAiAnswer] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [dragOver, setDragOver] = useState(null)
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
+  useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
     setLoading(true)
@@ -37,13 +36,14 @@ export default function Home() {
     setLoading(false)
   }
 
-  async function askAi(question) {
+  async function askAi(q) {
+    if (!q) return
     setAiLoading(true)
     setAiAnswer('')
     const res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ question: q })
     })
     const data = await res.json()
     setAiAnswer(data.answer)
@@ -70,211 +70,186 @@ export default function Home() {
     { id: 'financials', label: 'Financials' },
   ]
 
-  const tasksByStatus = (status) => tasks.filter(t => t.status === status)
+  const byStatus = (s) => tasks.filter(t => t.status === s)
   const totalBudget = budget.reduce((a, b) => a + Number(b.total), 0)
   const totalSpent = budget.reduce((a, b) => a + Number(b.spent), 0)
   const budgetPct = totalBudget ? Math.round((totalSpent / totalBudget) * 100) : 0
   const criticalRisks = risks.filter(r => r.probability * r.impact >= 16)
-  const avgOkrProgress = okrs.length ? Math.round(okrs.reduce((a, o) => a + o.progress, 0) / okrs.length) : 0
+  const avgOkr = okrs.length ? Math.round(okrs.reduce((a, o) => a + o.progress, 0) / okrs.length) : 0
+  const sprintPct = tasks.length ? Math.round((byStatus('done').length / tasks.length) * 100) : 0
 
-  const severityColor = (p, i) => {
+  const sevBadge = (p, i) => {
     const s = p * i
-    if (s >= 16) return 'text-red-400 bg-red-400/10'
-    if (s >= 9) return 'text-amber-400 bg-amber-400/10'
-    if (s >= 4) return 'text-blue-400 bg-blue-400/10'
-    return 'text-green-400 bg-green-400/10'
+    if (s >= 16) return { label: 'Critical', cls: 'pm-badge pm-badge-red' }
+    if (s >= 9) return { label: 'High', cls: 'pm-badge pm-badge-amber' }
+    if (s >= 4) return { label: 'Medium', cls: 'pm-badge pm-badge-blue' }
+    return { label: 'Low', cls: 'pm-badge pm-badge-green' }
   }
 
-  const severityLabel = (p, i) => {
-    const s = p * i
-    if (s >= 16) return 'Critical'
-    if (s >= 9) return 'High'
-    if (s >= 4) return 'Medium'
-    return 'Low'
-  }
-
-  const statusColor = (status) => {
+  const sBadge = (s) => {
     const map = {
-      'Pass': 'text-green-400 bg-green-400/10',
-      'Compliant': 'text-green-400 bg-green-400/10',
-      'Done': 'text-green-400 bg-green-400/10',
-      'On track': 'text-green-400 bg-green-400/10',
-      'Mitigated': 'text-green-400 bg-green-400/10',
-      'Pending': 'text-amber-400 bg-amber-400/10',
-      'In progress': 'text-amber-400 bg-amber-400/10',
-      'In review': 'text-amber-400 bg-amber-400/10',
-      'Monitoring': 'text-amber-400 bg-amber-400/10',
-      'At risk': 'text-red-400 bg-red-400/10',
-      'Overdue': 'text-red-400 bg-red-400/10',
-      'Blocked': 'text-red-400 bg-red-400/10',
-      'Active': 'text-blue-400 bg-blue-400/10',
-      'Planned': 'text-gray-400 bg-gray-400/10',
+      'Pass': 'pm-badge pm-badge-green', 'Done': 'pm-badge pm-badge-green',
+      'On track': 'pm-badge pm-badge-green', 'Mitigated': 'pm-badge pm-badge-green',
+      'Pending': 'pm-badge pm-badge-amber', 'In progress': 'pm-badge pm-badge-amber',
+      'In review': 'pm-badge pm-badge-amber', 'Monitoring': 'pm-badge pm-badge-amber',
+      'Active': 'pm-badge pm-badge-blue', 'Planned': 'pm-badge pm-badge-gray',
+      'At risk': 'pm-badge pm-badge-red', 'Overdue': 'pm-badge pm-badge-red',
+      'Blocked': 'pm-badge pm-badge-red',
+      'backlog': 'pm-badge pm-badge-gray', 'progress': 'pm-badge pm-badge-blue',
+      'review': 'pm-badge pm-badge-amber', 'done': 'pm-badge pm-badge-green',
     }
-    return map[status] || 'text-gray-400 bg-gray-400/10'
+    return map[s] || 'pm-badge pm-badge-gray'
   }
 
-  const teamColor = (team) => {
+  const tBadge = (t) => {
     const map = {
-      design: 'text-purple-400 bg-purple-400/10',
-      eng: 'text-teal-400 bg-teal-400/10',
-      data: 'text-amber-400 bg-amber-400/10',
-      growth: 'text-coral-400 bg-orange-400/10',
+      design: 'pm-badge pm-badge-purple',
+      eng: 'pm-badge pm-badge-teal',
+      data: 'pm-badge pm-badge-amber',
+      growth: 'pm-badge pm-badge-orange',
     }
-    return map[team] || 'text-gray-400 bg-gray-400/10'
+    return map[t] || 'pm-badge pm-badge-gray'
   }
+
+  const tLabel = { design: 'Design', eng: 'Engineering', data: 'Data', growth: 'Growth' }
+  const tBarColor = { design: '#8b5cf6', eng: '#14b8a6', data: '#f59e0b', growth: '#f97316' }
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-500 text-sm">Loading command center...</p>
+    <div style={{ minHeight: '100vh', background: '#080808', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '2px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }}></div>
+        <p style={{ color: '#4b5563', fontSize: 13 }}>Loading command center...</p>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100">
-      <div className="max-w-7xl mx-auto px-6 py-6">
+    <div style={{ minHeight: '100vh', background: '#080808', color: '#e5e7eb', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 32px' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-xs font-medium text-white">PM</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #161616' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>PM</div>
             <div>
-              <h1 className="text-sm font-medium text-white">PM Command Center</h1>
-              <p className="text-xs text-gray-500">Brahma Teja · Product & Project Manager</p>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>PM Command Center</div>
+              <div style={{ fontSize: 11, color: '#4b5563' }}>Brahma Teja · Product & Project Manager</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs px-3 py-1 rounded-full bg-white/5 text-gray-400 border border-white/10">Sprint 12 · May 1–14</span>
-            <span className="text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">On track</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{ fontSize: 11, padding: '6px 14px', borderRadius: 20, background: '#111', border: '1px solid #1f1f1f', color: '#6b7280' }}>Sprint 12 · May 1–14</span>
+            <span style={{ fontSize: 11, padding: '6px 14px', borderRadius: 20, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+              On track
+            </span>
           </div>
         </div>
 
         {/* Nav */}
-        <div className="flex gap-1 mb-6 overflow-x-auto pb-1 scrollbar-hide">
+        <div style={{ display: 'flex', gap: 4, marginBottom: 28, overflowX: 'auto', paddingBottom: 2 }}>
           {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`text-xs px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? 'bg-white/10 text-white font-medium'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-              }`}
-            >
-              {tab.label}
-            </button>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+              fontSize: 12, padding: '8px 16px', borderRadius: 8, border: activeTab === tab.id ? '1px solid #2a2a2a' : '1px solid transparent',
+              background: activeTab === tab.id ? '#141414' : 'transparent',
+              color: activeTab === tab.id ? '#fff' : '#6b7280',
+              cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: activeTab === tab.id ? 500 : 400,
+              transition: 'all 0.15s'
+            }}>{tab.label}</button>
           ))}
         </div>
 
         {/* OVERVIEW */}
         {activeTab === 'overview' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[
-                { label: 'Sprint completion', value: `${Math.round((tasksByStatus('done').length / tasks.length) * 100)}%`, sub: `${tasksByStatus('done').length} of ${tasks.length} tasks`, color: 'text-emerald-400' },
-                { label: 'Open risks', value: criticalRisks.length, sub: `${criticalRisks.length} critical`, color: 'text-red-400' },
-                { label: 'Budget used', value: `${budgetPct}%`, sub: `$${(totalSpent/1000000).toFixed(1)}M of $${(totalBudget/1000000).toFixed(1)}M`, color: 'text-amber-400' },
-                { label: 'OKR progress', value: `${avgOkrProgress}%`, sub: `${okrs.length} objectives`, color: 'text-blue-400' },
+                { label: 'Sprint completion', value: `${sprintPct}%`, sub: `${byStatus('done').length} of ${tasks.length} tasks`, color: '#10b981', glow: 'glow-green' },
+                { label: 'Critical risks', value: criticalRisks.length, sub: `${risks.length} total risks`, color: '#ef4444', glow: 'glow-red' },
+                { label: 'Budget used', value: `${budgetPct}%`, sub: `$${(totalSpent/1e6).toFixed(1)}M of $${(totalBudget/1e6).toFixed(1)}M`, color: '#f59e0b', glow: 'glow-amber' },
+                { label: 'OKR progress', value: `${avgOkr}%`, sub: `${okrs.length} objectives`, color: '#3b82f6', glow: 'glow-blue' },
               ].map((m, i) => (
-                <div key={i} className="bg-white/3 border border-white/5 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{m.label}</p>
-                  <p className={`text-2xl font-medium ${m.color}`}>{m.value}</p>
-                  <p className="text-xs text-gray-600 mt-1">{m.sub}</p>
+                <div key={i} className={`pm-metric ${m.glow}`}>
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color, marginBottom: 4, lineHeight: 1 }}>{m.value}</div>
+                  <div style={{ fontSize: 11, color: '#374151' }}>{m.sub}</div>
                 </div>
               ))}
             </div>
 
-            {/* AI Insights */}
-            <div className="bg-white/3 border border-white/5 rounded-xl p-5 mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-6 h-6 rounded-md bg-emerald-500 flex items-center justify-center text-xs text-white font-medium">AI</div>
+            {/* AI Panel */}
+            <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 16, padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#10b981' }}>AI</div>
                 <div>
-                  <p className="text-sm font-medium text-white">AI insights</p>
-                  <p className="text-xs text-gray-500">Powered by Claude · Real data from your project</p>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>AI insights</div>
+                  <div style={{ fontSize: 11, color: '#4b5563' }}>Powered by Claude · Reads all your live project data</div>
                 </div>
               </div>
-
-              <div className="flex gap-2 mb-4 flex-wrap">
-                {[
-                  "What are my top 3 priorities this week?",
-                  "Which risks need immediate attention?",
-                  "Is my budget on track?",
-                  "Which OKRs are at risk?",
-                ].map((q, i) => (
-                  <button
-                    key={i}
-                    onClick={() => askAi(q)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
-                  >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {['What are my top 3 priorities this week?','Which risks need immediate attention?','Is my budget on track?','Which OKRs are at risk?'].map((q, i) => (
+                  <button key={i} onClick={() => { setAiQuestion(q); askAi(q) }}
+                    style={{ fontSize: 11, padding: '7px 14px', borderRadius: 8, background: '#141414', border: '1px solid #1f1f1f', color: '#9ca3af', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseOver={e => { e.target.style.color = '#fff'; e.target.style.borderColor = '#2a2a2a' }}
+                    onMouseOut={e => { e.target.style.color = '#9ca3af'; e.target.style.borderColor = '#1f1f1f' }}>
                     {q}
                   </button>
                 ))}
               </div>
-
-              <div className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={aiQuestion}
-                  onChange={e => setAiQuestion(e.target.value)}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <input value={aiQuestion} onChange={e => setAiQuestion(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && askAi(aiQuestion)}
                   placeholder="Ask anything about your project..."
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-emerald-500/50"
-                />
-                <button
-                  onClick={() => askAi(aiQuestion)}
-                  disabled={aiLoading || !aiQuestion}
-                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white text-xs rounded-lg transition-all font-medium"
-                >
+                  className="pm-input" style={{ flex: 1 }} />
+                <button onClick={() => askAi(aiQuestion)} disabled={aiLoading || !aiQuestion} className="pm-btn-primary">
                   {aiLoading ? '...' : 'Ask'}
                 </button>
               </div>
-
               {aiLoading && (
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <div className="w-4 h-4 border border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                  Claude is analyzing your project data...
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#4b5563', fontSize: 13, padding: '8px 0' }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%', animation: `bounce 1s infinite ${i*150}ms` }}></div>
+                    ))}
+                  </div>
+                  Claude is analyzing your project...
                 </div>
               )}
-
               {aiAnswer && (
-                <div className="bg-white/3 border border-white/5 rounded-lg p-4 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                <div style={{ background: '#111', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 10, padding: 16, fontSize: 13, color: '#d1d5db', lineHeight: 1.7, whiteSpace: 'pre-wrap', marginTop: 8 }}>
                   {aiAnswer}
                 </div>
               )}
             </div>
 
-            {/* Team velocity */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Team velocity</p>
+            {/* Bottom row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="pm-card">
+                <div className="pm-section-title">Team velocity</div>
                 {['design','eng','data','growth'].map(team => {
-                  const teamTasks = tasks.filter(t => t.team === team)
-                  const doneTasks = teamTasks.filter(t => t.status === 'done' || t.status === 'review')
-                  const pct = teamTasks.length ? Math.round((doneTasks.length / teamTasks.length) * 100) : 0
-                  const colors = { design: 'bg-purple-500', eng: 'bg-teal-500', data: 'bg-amber-500', growth: 'bg-orange-500' }
+                  const tt = tasks.filter(t => t.team === team)
+                  const done = tt.filter(t => t.status === 'done' || t.status === 'review')
+                  const pct = tt.length ? Math.round((done.length / tt.length) * 100) : 0
                   return (
-                    <div key={team} className="mb-3">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-gray-400 capitalize">{team === 'eng' ? 'Engineering' : team}</span>
-                        <span className="text-gray-500">{pct}%</span>
+                    <div key={team} style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+                        <span style={{ color: '#9ca3af' }}>{tLabel[team]}</span>
+                        <span style={{ color: '#6b7280' }}>{pct}%</span>
                       </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${colors[team]} transition-all`} style={{ width: `${pct}%` }}></div>
+                      <div style={{ height: 4, background: '#1a1a1a', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: tBarColor[team], borderRadius: 4, transition: 'width 0.7s ease' }}></div>
                       </div>
                     </div>
                   )
                 })}
               </div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Sprint snapshot</p>
+              <div className="pm-card">
+                <div className="pm-section-title">Sprint snapshot</div>
                 {tasks.slice(0, 6).map(task => (
-                  <div key={task.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                    <span className="text-xs text-gray-300 truncate flex-1 mr-2">{task.title}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(task.status === 'progress' ? 'In progress' : task.status === 'done' ? 'Done' : task.status === 'review' ? 'In review' : 'Planned')}`}>
-                      {task.status === 'progress' ? 'In progress' : task.status}
-                    </span>
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #161616' }}>
+                    <span style={{ fontSize: 12, color: '#9ca3af', flex: 1, marginRight: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
+                    <span className={sBadge(task.status)}>{task.status === 'progress' ? 'In progress' : task.status}</span>
                   </div>
                 ))}
               </div>
@@ -284,85 +259,80 @@ export default function Home() {
 
         {/* OKRs */}
         {activeTab === 'okrs' && (
-          <div>
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Objectives</p>
-                <p className="text-2xl font-medium text-white">{okrs.length}</p>
-              </div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Avg progress</p>
-                <p className="text-2xl font-medium text-blue-400">{avgOkrProgress}%</p>
-              </div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">At risk</p>
-                <p className="text-2xl font-medium text-red-400">{okrs.filter(o => o.progress < 40).length}</p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {okrs.map(okr => (
-                <div key={okr.id} className="bg-white/3 border border-white/5 rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium text-white">{okr.objective}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${okr.progress >= 70 ? 'text-green-400 bg-green-400/10' : okr.progress >= 40 ? 'text-amber-400 bg-amber-400/10' : 'text-red-400 bg-red-400/10'}`}>{okr.progress}%</span>
-                  </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden mb-4">
-                    <div className={`h-full rounded-full transition-all ${okr.progress >= 70 ? 'bg-green-500' : okr.progress >= 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${okr.progress}%` }}></div>
-                  </div>
-                  {okr.key_results && okr.key_results.map(kr => (
-                    <div key={kr.id} className="ml-4 py-2 border-b border-white/5 last:border-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-gray-400">{kr.title}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(kr.status)}`}>{kr.progress}%</span>
-                      </div>
-                      <div className="h-1 bg-white/5 rounded-full overflow-hidden mb-1">
-                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${kr.progress}%` }}></div>
-                      </div>
-                      <p className="text-xs text-gray-600">{kr.note}</p>
-                    </div>
-                  ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              {[
+                { label: 'Objectives', value: okrs.length, color: '#fff' },
+                { label: 'Avg progress', value: `${avgOkr}%`, color: '#3b82f6' },
+                { label: 'At risk', value: okrs.filter(o => o.progress < 40).length, color: '#ef4444' },
+              ].map((m, i) => (
+                <div key={i} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color }}>{m.value}</div>
                 </div>
               ))}
             </div>
+            {okrs.map(okr => (
+              <div key={okr.id} className="pm-card">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{okr.objective}</div>
+                  <span className={okr.progress >= 70 ? 'pm-badge pm-badge-green' : okr.progress >= 40 ? 'pm-badge pm-badge-amber' : 'pm-badge pm-badge-red'}>{okr.progress}%</span>
+                </div>
+                <div style={{ height: 4, background: '#1a1a1a', borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ height: '100%', width: `${okr.progress}%`, background: okr.progress >= 70 ? '#10b981' : okr.progress >= 40 ? '#f59e0b' : '#ef4444', borderRadius: 4, transition: 'width 0.7s' }}></div>
+                </div>
+                <div style={{ paddingLeft: 16, borderLeft: '2px solid #1f1f1f' }}>
+                  {okr.key_results && okr.key_results.map(kr => (
+                    <div key={kr.id} style={{ paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #161616' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>{kr.title}</span>
+                        <span className={sBadge(kr.status)} style={{ marginLeft: 8, flexShrink: 0 }}>{kr.progress}%</span>
+                      </div>
+                      <div style={{ height: 2, background: '#1a1a1a', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
+                        <div style={{ height: '100%', width: `${kr.progress}%`, background: '#3b82f6', borderRadius: 2 }}></div>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#4b5563' }}>{kr.note}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {/* KANBAN */}
         {activeTab === 'kanban' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              {['backlog','progress','review','done'].map(status => (
-                <div key={status} className="bg-white/3 border border-white/5 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{status === 'progress' ? 'In progress' : status}</p>
-                  <p className="text-2xl font-medium text-white">{tasksByStatus(status).length}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {['backlog','progress','review','done'].map(s => (
+                <div key={s} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>{s === 'progress' ? 'In progress' : s}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: '#fff' }}>{byStatus(s).length}</div>
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-4 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {['backlog','progress','review','done'].map(status => (
-                <div
-                  key={status}
-                  className="bg-white/3 border border-white/5 rounded-xl p-3 min-h-80"
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => {
-                    const id = e.dataTransfer.getData('taskId')
-                    moveTask(id, status)
-                  }}
-                >
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-medium">{status === 'progress' ? 'In progress' : status}</p>
-                  {tasksByStatus(status).map(task => (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={e => e.dataTransfer.setData('taskId', task.id)}
-                      className="bg-white/5 border border-white/10 rounded-lg p-3 mb-2 cursor-grab active:cursor-grabbing hover:border-white/20 transition-all"
-                    >
-                      <p className="text-xs text-gray-200 font-medium mb-2 leading-relaxed">{task.title}</p>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${teamColor(task.team)}`}>{task.team === 'eng' ? 'Engineering' : task.team}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600">{task.points}pts</span>
-                          <span className="text-xs text-gray-600">{task.owner}</span>
+                <div key={status}
+                  style={{ background: dragOver === status ? '#0f1a14' : '#0d0d0d', border: dragOver === status ? '1px solid rgba(16,185,129,0.3)' : '1px solid #1a1a1a', borderRadius: 12, padding: 14, minHeight: 400, transition: 'all 0.2s' }}
+                  onDragOver={e => { e.preventDefault(); setDragOver(status) }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={e => { const id = e.dataTransfer.getData('taskId'); moveTask(id, status); setDragOver(null) }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <span style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>{status === 'progress' ? 'In progress' : status}</span>
+                    <span style={{ fontSize: 10, color: '#374151', background: '#141414', border: '1px solid #1f1f1f', borderRadius: 20, padding: '2px 8px' }}>{byStatus(status).length}</span>
+                  </div>
+                  {byStatus(status).map(task => (
+                    <div key={task.id} draggable onDragStart={e => e.dataTransfer.setData('taskId', task.id)}
+                      style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: 10, padding: 12, marginBottom: 8, cursor: 'grab', transition: 'all 0.15s' }}
+                      onMouseOver={e => e.currentTarget.style.borderColor = '#2a2a2a'}
+                      onMouseOut={e => e.currentTarget.style.borderColor = '#1f1f1f'}>
+                      <div style={{ fontSize: 12, color: '#e5e7eb', fontWeight: 500, marginBottom: 10, lineHeight: 1.4 }}>{task.title}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className={tBadge(task.team)}>{tLabel[task.team] || task.team}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 10, color: '#4b5563' }}>{task.points}pts</span>
+                          <span style={{ fontSize: 9, color: '#4b5563', background: '#1a1a1a', border: '1px solid #222', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{task.owner}</span>
                         </div>
                       </div>
                     </div>
@@ -375,64 +345,75 @@ export default function Home() {
 
         {/* RISKS */}
         {activeTab === 'risks' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total</p><p className="text-2xl font-medium text-white">{risks.length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Critical</p><p className="text-2xl font-medium text-red-400">{risks.filter(r => r.probability * r.impact >= 16).length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">High</p><p className="text-2xl font-medium text-amber-400">{risks.filter(r => { const s = r.probability * r.impact; return s >= 9 && s < 16 }).length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Mitigated</p><p className="text-2xl font-medium text-green-400">{risks.filter(r => r.status === 'Mitigated').length}</p></div>
-            </div>
-            <div className="space-y-3">
-              {risks.map(risk => (
-                <div key={risk.id} className="bg-white/3 border border-white/5 rounded-xl p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm font-medium text-white">{risk.name}</p>
-                    <div className="flex gap-2 ml-4">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${severityColor(risk.probability, risk.impact)}`}>{severityLabel(risk.probability, risk.impact)}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(risk.status)}`}>{risk.status}</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-2">{risk.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-600">
-                    <span>P: {risk.probability}/5</span>
-                    <span>I: {risk.impact}/5</span>
-                    <span>Score: {risk.probability * risk.impact}/25</span>
-                    <span>Owner: {risk.owner}</span>
-                  </div>
-                  <div className="mt-2 pt-2 border-t border-white/5">
-                    <p className="text-xs text-gray-500"><span className="text-gray-400">Mitigation: </span>{risk.mitigation}</p>
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[
+                { label: 'Total', value: risks.length, color: '#fff' },
+                { label: 'Critical', value: risks.filter(r => r.probability*r.impact >= 16).length, color: '#ef4444' },
+                { label: 'High', value: risks.filter(r => { const s=r.probability*r.impact; return s>=9&&s<16 }).length, color: '#f59e0b' },
+                { label: 'Mitigated', value: risks.filter(r => r.status==='Mitigated').length, color: '#10b981' },
+              ].map((m,i) => (
+                <div key={i} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color }}>{m.value}</div>
                 </div>
               ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {risks.map(risk => {
+                const sev = sevBadge(risk.probability, risk.impact)
+                return (
+                  <div key={risk.id} className="pm-card" style={{ padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{risk.name}</div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 16 }}>
+                        <span className={sev.cls}>{sev.label}</span>
+                        <span className={sBadge(risk.status)}>{risk.status}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>{risk.description}</div>
+                    <div style={{ display: 'flex', gap: 20, fontSize: 11, color: '#4b5563', marginBottom: 12 }}>
+                      <span>Probability <span style={{ color: '#6b7280' }}>{risk.probability}/5</span></span>
+                      <span>Impact <span style={{ color: '#6b7280' }}>{risk.impact}/5</span></span>
+                      <span>Score <span style={{ color: '#6b7280' }}>{risk.probability * risk.impact}/25</span></span>
+                      <span>Owner <span style={{ color: '#6b7280' }}>{risk.owner}</span></span>
+                    </div>
+                    <div style={{ paddingTop: 12, borderTop: '1px solid #1a1a1a', fontSize: 12, color: '#6b7280' }}>
+                      <span style={{ color: '#4b5563', fontWeight: 500 }}>Mitigation: </span>{risk.mitigation}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
 
         {/* COMPLIANCE */}
         {activeTab === 'compliance' && (
-          <div>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {['HIPAA','GDPR','CCPA'].map(fw => {
                 const items = compliance.filter(c => c.framework === fw)
                 const passed = items.filter(c => c.status === 'Pass').length
+                const color = passed === items.length ? '#10b981' : passed >= items.length/2 ? '#f59e0b' : '#ef4444'
                 return (
-                  <div key={fw} className="bg-white/3 border border-white/5 rounded-xl p-4">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{fw}</p>
-                    <p className={`text-2xl font-medium ${passed === items.length ? 'text-green-400' : passed >= items.length / 2 ? 'text-amber-400' : 'text-red-400'}`}>{passed}/{items.length}</p>
-                    <p className="text-xs text-gray-600 mt-1">controls passed</p>
+                  <div key={fw} className="pm-metric">
+                    <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{fw}</div>
+                    <div style={{ fontSize: 32, fontWeight: 700, color }}>{passed}/{items.length}</div>
+                    <div style={{ fontSize: 11, color: '#374151', marginTop: 4 }}>controls passed</div>
                   </div>
                 )
               })}
             </div>
             {['HIPAA','GDPR','CCPA'].map(fw => (
-              <div key={fw} className="bg-white/3 border border-white/5 rounded-xl p-5 mb-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">{fw} controls</p>
-                {compliance.filter(c => c.framework === fw).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-                    <p className="text-sm text-gray-300">{item.control}</p>
-                    <div className="flex gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(item.status)}`}>{item.status}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full text-gray-500 bg-white/5">{item.priority}</span>
+              <div key={fw} className="pm-card">
+                <div className="pm-section-title">{fw} controls</div>
+                {compliance.filter(c => c.framework === fw).map((item, idx, arr) => (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length-1 ? '1px solid #161616' : 'none' }}>
+                    <span style={{ fontSize: 13, color: '#d1d5db' }}>{item.control}</span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span className={sBadge(item.status)}>{item.status}</span>
+                      <span className="pm-badge pm-badge-gray">{item.priority}</span>
                     </div>
                   </div>
                 ))}
@@ -443,38 +424,39 @@ export default function Home() {
 
         {/* STAKEHOLDERS */}
         {activeTab === 'stakeholders' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total</p><p className="text-2xl font-medium text-white">{stakeholders.length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">High influence</p><p className="text-2xl font-medium text-white">{stakeholders.filter(s => s.influence === 'High').length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Engaged</p><p className="text-2xl font-medium text-green-400">{stakeholders.filter(s => s.engagement === 'High').length}</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Needs attention</p><p className="text-2xl font-medium text-red-400">{stakeholders.filter(s => s.engagement === 'Low').length}</p></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[
+                { label: 'Total', value: stakeholders.length, color: '#fff' },
+                { label: 'High influence', value: stakeholders.filter(s => s.influence==='High').length, color: '#fff' },
+                { label: 'Engaged', value: stakeholders.filter(s => s.engagement==='High').length, color: '#10b981' },
+                { label: 'Needs attention', value: stakeholders.filter(s => s.engagement==='Low').length, color: '#ef4444' },
+              ].map((m,i) => (
+                <div key={i} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color }}>{m.value}</div>
+                </div>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
               {stakeholders.map(s => (
-                <div key={s.id} className="bg-white/3 border border-white/5 rounded-xl p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${s.engagement === 'Low' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                <div key={s.id} className="pm-card" style={{ borderColor: s.engagement === 'Low' ? 'rgba(239,68,68,0.2)' : '#1f1f1f' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0, background: s.engagement === 'Low' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)', color: s.engagement === 'Low' ? '#f87171' : '#60a5fa', border: s.engagement === 'Low' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(59,130,246,0.2)' }}>
                       {s.name.split(' ').map(w => w[0]).join('').slice(0,2)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">{s.name}</p>
-                      <p className="text-xs text-gray-500">{s.role}</p>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: '#4b5563' }}>{s.role}</div>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Influence</span>
-                      <span className="text-gray-300">{s.influence}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Engagement</span>
-                      <span className={s.engagement === 'Low' ? 'text-red-400' : s.engagement === 'Medium' ? 'text-amber-400' : 'text-green-400'}>{s.engagement}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-gray-500">Communication</span>
-                      <span className="text-gray-300">{s.communication_freq}</span>
-                    </div>
+                  <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: 12 }}>
+                    {[['Influence', s.influence], ['Engagement', s.engagement], ['Communication', s.communication_freq]].map(([k,v]) => (
+                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '5px 0' }}>
+                        <span style={{ color: '#4b5563' }}>{k}</span>
+                        <span style={{ color: k === 'Engagement' ? (v === 'Low' ? '#f87171' : v === 'Medium' ? '#fbbf24' : '#34d399') : '#9ca3af' }}>{v}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -484,31 +466,36 @@ export default function Home() {
 
         {/* FINANCIALS */}
         {activeTab === 'financials' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total budget</p><p className="text-2xl font-medium text-white">${(totalBudget/1000000).toFixed(1)}M</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Spent</p><p className="text-2xl font-medium text-amber-400">${(totalSpent/1000000).toFixed(1)}M</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Remaining</p><p className="text-2xl font-medium text-green-400">${((totalBudget-totalSpent)/1000000).toFixed(1)}M</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Used</p><p className="text-2xl font-medium text-amber-400">{budgetPct}%</p></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[
+                { label: 'Total budget', value: `$${(totalBudget/1e6).toFixed(1)}M`, color: '#fff' },
+                { label: 'Spent', value: `$${(totalSpent/1e6).toFixed(1)}M`, color: '#f59e0b' },
+                { label: 'Remaining', value: `$${((totalBudget-totalSpent)/1e6).toFixed(1)}M`, color: '#10b981' },
+                { label: 'Used', value: `${budgetPct}%`, color: budgetPct > 85 ? '#ef4444' : '#f59e0b' },
+              ].map((m,i) => (
+                <div key={i} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color }}>{m.value}</div>
+                </div>
+              ))}
             </div>
-            <div className="bg-white/3 border border-white/5 rounded-xl p-5 mb-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Budget by workstream</p>
-              {budget.map(b => {
+            <div className="pm-card">
+              <div className="pm-section-title">Budget by workstream</div>
+              {budget.map((b, idx, arr) => {
                 const pct = Math.round((Number(b.spent) / Number(b.total)) * 100)
+                const color = pct >= 85 ? '#ef4444' : pct >= 70 ? '#f59e0b' : '#10b981'
                 return (
-                  <div key={b.id} className="mb-4">
-                    <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-gray-300">{b.workstream}</span>
-                      <div className="flex gap-3">
-                        <span className="text-gray-500">${(Number(b.spent)/1000).toFixed(0)}K / ${(Number(b.total)/1000).toFixed(0)}K</span>
-                        <span className={pct >= 85 ? 'text-red-400' : pct >= 70 ? 'text-amber-400' : 'text-green-400'}>{pct}%</span>
+                  <div key={b.id} style={{ marginBottom: idx < arr.length-1 ? 20 : 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
+                      <span style={{ color: '#d1d5db', fontWeight: 500 }}>{b.workstream}</span>
+                      <div style={{ display: 'flex', gap: 16 }}>
+                        <span style={{ color: '#4b5563' }}>${(Number(b.spent)/1000).toFixed(0)}K / ${(Number(b.total)/1000).toFixed(0)}K</span>
+                        <span style={{ color, fontWeight: 600, minWidth: 36, textAlign: 'right' }}>{pct}%</span>
                       </div>
                     </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${pct >= 85 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-green-500'}`}
-                        style={{ width: `${pct}%` }}
-                      ></div>
+                    <div style={{ height: 6, background: '#1a1a1a', borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 6, transition: 'width 0.7s ease' }}></div>
                     </div>
                   </div>
                 )
@@ -519,25 +506,32 @@ export default function Home() {
 
         {/* ROADMAP */}
         {activeTab === 'roadmap' && (
-          <div>
-            <div className="grid grid-cols-4 gap-3 mb-6">
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Initiatives</p><p className="text-2xl font-medium text-white">16</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">On track</p><p className="text-2xl font-medium text-green-400">11</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">At risk</p><p className="text-2xl font-medium text-amber-400">3</p></div>
-              <div className="bg-white/3 border border-white/5 rounded-xl p-4"><p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Completed</p><p className="text-2xl font-medium text-blue-400">2</p></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[
+                { label: 'Initiatives', value: 16, color: '#fff' },
+                { label: 'On track', value: 11, color: '#10b981' },
+                { label: 'At risk', value: 3, color: '#f59e0b' },
+                { label: 'Completed', value: 2, color: '#3b82f6' },
+              ].map((m,i) => (
+                <div key={i} className="pm-metric">
+                  <div style={{ fontSize: 10, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{m.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: m.color }}>{m.value}</div>
+                </div>
+              ))}
             </div>
             {[
-              { q: 'Q1 · Jan–Mar', items: [['Onboarding redesign','Done'],['Auth v2 migration','Done'],['Retention dashboard','On track'],['SEO content sprint','At risk']] },
-              { q: 'Q2 · Apr–Jun', items: [['Mobile app v3','On track'],['API rate limiting','On track'],['Funnel analysis tool','On track'],['Referral program','At risk']] },
-              { q: 'Q3 · Jul–Sep', items: [['Design system v2','Planned'],['Infra cost reduction','Planned'],['Predictive churn model','Planned'],['Paid acquisition tests','At risk']] },
-              { q: 'Q4 · Oct–Dec', items: [['Accessibility audit','Planned'],['Search v2','Planned'],['Revenue attribution','Planned'],['Partner integrations','Planned']] },
+              { q: 'Q1 · Jan – Mar', items: [['Onboarding redesign','Done'],['Auth v2 migration','Done'],['Retention dashboard','On track'],['SEO content sprint','At risk']] },
+              { q: 'Q2 · Apr – Jun', items: [['Mobile app v3','On track'],['API rate limiting','On track'],['Funnel analysis tool','On track'],['Referral program','At risk']] },
+              { q: 'Q3 · Jul – Sep', items: [['Design system v2','Planned'],['Infra cost reduction','Planned'],['Predictive churn model','Planned'],['Paid acquisition tests','At risk']] },
+              { q: 'Q4 · Oct – Dec', items: [['Accessibility audit','Planned'],['Search v2','Planned'],['Revenue attribution','Planned'],['Partner integrations','Planned']] },
             ].map(({ q, items }) => (
-              <div key={q} className="bg-white/3 border border-white/5 rounded-xl p-5 mb-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">{q}</p>
-                {items.map(([name, status]) => (
-                  <div key={name} className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-                    <p className="text-sm text-gray-300">{name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor(status)}`}>{status}</span>
+              <div key={q} className="pm-card">
+                <div className="pm-section-title">{q}</div>
+                {items.map(([name, status], idx, arr) => (
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length-1 ? '1px solid #161616' : 'none' }}>
+                    <span style={{ fontSize: 13, color: '#d1d5db' }}>{name}</span>
+                    <span className={sBadge(status)}>{status}</span>
                   </div>
                 ))}
               </div>
@@ -546,6 +540,11 @@ export default function Home() {
         )}
 
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
+        @keyframes bounce { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+      `}</style>
     </div>
   )
 }
