@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# PM Command Center
 
-## Getting Started
+A production-grade project management platform built to demonstrate
+full-stack PM skills across 8 interactive modules.
 
-First, run the development server:
+## Live demo
+👉 https://your-pm-vercel-url.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What this is
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Most PM portfolios are slide decks and Notion pages. This is a fully
+deployed, interactive project management platform powered by a real
+database and AI-driven insights.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 8 interactive modules
 
-To learn more about Next.js, take a look at the following resources:
+- **Overview** — Sprint completion, risk count, budget, OKR progress, AI insights
+- **OKRs** — 4 objectives with 11 key results and progress tracking
+- **Roadmap** — Q1 to Q4 initiative planning across 4 teams
+- **Kanban** — Drag and drop cards with real database persistence
+- **Risks** — Probability x impact matrix with mitigation plans
+- **Compliance** — HIPAA, GDPR and CCPA control tracking
+- **Stakeholders** — Influence and engagement mapping
+- **Financials** — $2.4M budget tracked across 6 workstreams
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech stack
 
-## Deploy on Vercel
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 15 + Tailwind CSS |
+| Database | Supabase (Postgres) |
+| AI | Anthropic Claude Sonnet |
+| Deployment | Vercel |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Running locally
+
+1. Clone the repo and install dependencies
+
+        git clone https://github.com/vbteja/pm-command-center.git
+        cd pm-command-center
+        npm install
+
+2. Create .env.local with these variables
+
+        NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+        NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+        ANTHROPIC_API_KEY=your_claude_api_key
+
+3. Run the dev server
+
+        npm run dev
+
+---
+
+## PM skills showcased
+
+- Roadmap planning across 4 teams and 4 quarters
+- Sprint management with real Kanban persistence
+- Risk management with probability x impact scoring
+- OKR methodology with key result tracking
+- Compliance governance — HIPAA, GDPR, CCPA
+- Stakeholder engagement and influence mapping
+- Budget tracking with threshold alerts
+- AI literacy — Claude API for augmented insights
+
+---
+
+## About
+
+Built by Brahma Teja — Product and Project Manager with 4+ years of experience.
+
+- LinkedIn: https://linkedin.com/in/brahma-teja-69b91a185
+- GitHub: https://github.com/vbteja
+- Email: brahma.tej19@gmail.com
