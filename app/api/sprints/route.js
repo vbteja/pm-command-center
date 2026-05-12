@@ -5,6 +5,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('sprints')
     .select('*')
+    .order('created_at', { ascending: false })
     .limit(1)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
